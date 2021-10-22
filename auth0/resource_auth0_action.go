@@ -76,7 +76,7 @@ func newAction() *schema.Resource {
 func createAction(d *schema.ResourceData, m interface{}) error {
 	c := buildAction(d)
 	api := m.(*management.Management)
-	if err := api.Hook.Create(c); err != nil {
+	if err := api.Action.Create(c); err != nil {
 		return err
 	}
 	d.SetId(auth0.StringValue(c.ID))
@@ -88,7 +88,7 @@ func createAction(d *schema.ResourceData, m interface{}) error {
 
 func readAction(d *schema.ResourceData, m interface{}) error {
 	api := m.(*management.Management)
-	c, err := api.Hook.Read(d.Id())
+	c, err := api.Action.Read(d.Id())
 	if err != nil {
 		if mErr, ok := err.(management.Error); ok {
 			if mErr.Status() == http.StatusNotFound {
@@ -99,18 +99,25 @@ func readAction(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
+	d.Set("id", c.ID)
 	d.Set("name", c.Name)
+	d.Set("code", c.Code)
+	d.Set("supported_triggers", c.SupportedTriggers)
 	d.Set("dependencies", c.Dependencies)
-	d.Set("script", c.Script)
-	d.Set("trigger_id", c.TriggerID)
-	d.Set("enabled", c.Enabled)
+	d.Set("secrets", c.Secrets)
+	d.Set("status", c.Status)
+	d.Set("deployed_version", c.DeployedVersion)
+	d.Set("all_changes_deployed", c.AllChangesDeployed)
+	d.Set("created_at", c.CreatedAt)
+	d.Set("updated_at", c.UpdatedAt)
+	d.Set("built_at", c.BuiltAt)
 	return nil
 }
 
 func updateAction(d *schema.ResourceData, m interface{}) error {
 	c := buildAction(d)
 	api := m.(*management.Management)
-	err := api.Hook.Update(d.Id(), c)
+	err := api.Action.Update(d.Id(), c)
 	if err != nil {
 		return err
 	}
@@ -125,7 +132,7 @@ func upsertActionSecrets(d *schema.ResourceData, m interface{}) error {
 		secrets := Map(d, "secrets")
 		api := m.(*management.Management)
 		hookSecrets := toActionSecrets(secrets)
-		return api.Hook.ReplaceSecrets(d.Id(), hookSecrets)
+		return api.Action.ReplaceSecrets(d.Id(), hookSecrets)
 	}
 	return nil
 }
@@ -142,7 +149,7 @@ func toActionSecrets(val map[string]interface{}) management.HookSecrets {
 
 func deleteAction(d *schema.ResourceData, m interface{}) error {
 	api := m.(*management.Management)
-	err := api.Hook.Delete(d.Id())
+	err := api.Action.Delete(d.Id())
 	if err != nil {
 		if mErr, ok := err.(management.Error); ok {
 			if mErr.Status() == http.StatusNotFound {
@@ -155,8 +162,8 @@ func deleteAction(d *schema.ResourceData, m interface{}) error {
 	return err
 }
 
-func buildAction(d *schema.ResourceData) *management.Hook {
-	h := &management.Hook{
+func buildAction(d *schema.ResourceData) *management.Action {
+	h := &management.Action{
 		Name:      String(d, "name"),
 		Script:    String(d, "script"),
 		TriggerID: String(d, "trigger_id", IsNewResource()),
